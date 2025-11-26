@@ -1,0 +1,17 @@
+{
+  "name": "feibot-scraper",
+  "version": "1.0.0",
+  "description": "Scraper for Feibot race results",
+  "main": "scraper.js",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "keywords": ["scraper", "race", "results"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "csv-writer": "^1.6.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:time.feibot.com)",
+      "Bash(npm install)",
+      "Bash(npx playwright install chromium)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

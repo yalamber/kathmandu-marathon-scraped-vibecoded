@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Results Analytics Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 16px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 40px rgba(30, 58, 138, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #3b82f6;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            transform: translateY(-2px);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .stat-label {
+            font-size: 0.875em;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            font-size: 1.5em;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1;
+        }
+
+        .stat-change {
+            font-size: 0.875em;
+            color: #10b981;
+            margin-top: 8px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 24px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .chart-title {
+            font-size: 1.125em;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+
+        .leaderboard {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8fafc;
+        }
+
+        th {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 0.875em;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 0.875em;
+        }
+
+        .rank-1 { background: #fbbf24; color: #92400e; }
+        .rank-2 { background: #d1d5db; color: #374151; }
+        .rank-3 { background: #f59e0b; color: #78350f; }
+        .rank-other { background: #e2e8f0; color: #475569; }
+
+        .event-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .event-full { background: #dbeafe; color: #1e40af; }
+        .event-half { background: #d1fae5; color: #065f46; }
+        .event-10k { background: #fef3c7; color: #92400e; }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 1.2em;
+            color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏃 Race Results Analytics Dashboard</h1>
+            <p class="subtitle">Comprehensive race performance analysis and statistics</p>
+        </header>
+
+        <div id="loading" class="loading">Loading race data...</div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Key Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Total Participants</span>
+                        <span class="stat-icon">👥</span>
+                    </div>
+                    <div class="stat-number" id="totalParticipants">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Finishers</span>
+                        <span class="stat-icon">🏁</span>
+                    </div>
+                    <div class="stat-number" id="totalFinishers">0</div>
+                    <div class="stat-change" id="finishRate">0% completion rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Average Time</span>
+                        <span class="stat-icon">⏱️</span>
+                    </div>
+                    <div class="stat-number" id="avgTime">--:--:--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-label">Fastest Finish</span>
+                        <span class="stat-icon">⚡</span>
+                    </div>
+                    <div class="stat-number" id="fastestTime">--:--:--</div>
+                    <div class="stat-change" id="fastestSpeed">0 km/h</div>
+                </div>
+            </div>
+
+            <!-- Event Distribution -->
+            <div class="section">
+                <h2 class="section-title">Event Distribution</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Full Marathon</span>
+                            <span class="stat-icon">🎯</span>
+                        </div>
+                        <div class="stat-number" id="fullMarathonCount">0</div>
+                        <div class="stat-change">42.195 km</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">Half Marathon</span>
+                            <span class="stat-icon">🎯</span>
+                        </div>
+                        <div class="stat-number" id="halfMarathonCount">0</div>
+                        <div class="stat-change">21.0975 km</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <span class="stat-label">10K Run</span>
+                            <span class="stat-icon">🎯</span>
+                        </div>
+                        <div class="stat-number" id="tenKCount">0</div>
+                        <div class="stat-change">10 km</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Event Participation</h3>
+                    <canvas id="eventChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Gender Distribution</h3>
+                    <canvas id="genderChart"></canvas>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3 class="chart-title">Age Group Distribution</h3>
+                    <canvas id="ageGroupChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="chart-title">Average Finish Time by Event</h3>
+                    <canvas id="avgTimeByEventChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Leaderboards by Event -->
+            <div class="section">
+                <h2 class="section-title">🏆 Top 10 Finishers by Event</h2>
+
+                <h3 class="chart-title" style="margin-top: 24px; margin-bottom: 16px;">Full Marathon (42.195 km)</h3>
+                <div class="leaderboard">
+                    <table id="fullMarathonTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Bib</th>
+                                <th>Name</th>
+                                <th>Age Group</th>
+                                <th>Gender</th>
+                                <th>Time</th>
+                                <th>Pace</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullMarathonBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="chart-title" style="margin-top: 32px; margin-bottom: 16px;">Half Marathon (21.0975 km)</h3>
+                <div class="leaderboard">
+                    <table id="halfMarathonTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Bib</th>
+                                <th>Name</th>
+                                <th>Age Group</th>
+                                <th>Gender</th>
+                                <th>Time</th>
+                                <th>Pace</th>
+                            </tr>
+                        </thead>
+                        <tbody id="halfMarathonBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 class="chart-title" style="margin-top: 32px; margin-bottom: 16px;">10K Run (10 km)</h3>
+                <div class="leaderboard">
+                    <table id="tenKTable">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Bib</th>
+                                <th>Name</th>
+                                <th>Age Group</th>
+                                <th>Gender</th>
+                                <th>Time</th>
+                                <th>Pace</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tenKBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parse time in HH:MM:SS format to total seconds
+        function parseTime(timeStr) {
+            if (!timeStr || timeStr === '') return null;
+            const parts = timeStr.split(':').map(p => parseInt(p) || 0);
+            if (parts.length === 3) {
+                return parts[0] * 3600 + parts[1] * 60 + parts[2]; // hours * 3600 + minutes * 60 + seconds
+            }
+            return null;
+        }
+
+        // Format seconds to HH:MM:SS
+        function formatTime(seconds) {
+            if (!seconds) return '--:--:--';
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Get distance based on event type
+        function getEventDistance(event) {
+            if (event.includes('Full Marathon')) return 42.195;
+            if (event.includes('Half Marathon')) return 21.0975;
+            if (event.includes('10K')) return 10;
+            return 0;
+        }
+
+        // Calculate speed in km/h
+        function calculateSpeed(timeSeconds, distance) {
+            if (!timeSeconds || !distance) return 0;
+            const hours = timeSeconds / 3600;
+            return distance / hours;
+        }
+
+        // Calculate pace in min/km
+        function calculatePace(timeSeconds, distance) {
+            if (!timeSeconds || !distance) return '--:--';
+            const totalMinutes = timeSeconds / 60;
+            const paceMinutes = totalMinutes / distance;
+            const mins = Math.floor(paceMinutes);
+            const secs = Math.floor((paceMinutes - mins) * 60);
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Extract age category from age group field
+        function extractAgeCategory(ageGroup) {
+            if (!ageGroup) return 'Unknown';
+            if (ageGroup.includes('60+')) return '60+';
+            if (ageGroup.includes('50+')) return '50+';
+            if (ageGroup.includes('40+')) return '40+';
+            if (ageGroup.includes('Masters')) return 'Masters';
+            if (ageGroup.includes('Open')) return 'Open';
+            return 'Other';
+        }
+
+        // Get event badge class
+        function getEventBadgeClass(event) {
+            if (event.includes('Full Marathon')) return 'event-full';
+            if (event.includes('Half Marathon')) return 'event-half';
+            if (event.includes('10K')) return 'event-10k';
+            return 'event-full';
+        }
+
+        // Parse CSV
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+
+                const values = lines[i].split(',');
+                const row = {};
+
+                headers.forEach((header, index) => {
+                    row[header.trim()] = values[index] ? values[index].trim() : '';
+                });
+
+                data.push(row);
+            }
+
+            return data;
+        }
+
+        // Load and process data
+        async function loadData() {
+            try {
+                const response = await fetch('race_results.csv');
+                const csvText = await response.text();
+                const data = parseCSV(csvText);
+
+                processData(data);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').textContent = 'Error loading data. Please make sure race_results.csv is available.';
+            }
+        }
+
+        function processData(data) {
+            // Filter out rows without names (invalid entries)
+            const validData = data.filter(row => row.NAME && row.NAME !== '');
+
+            // Separate finishers and non-finishers
+            const finishers = validData.filter(row => row.STATUS === 'Finisher' && row.GUNTIME);
+
+            // Calculate statistics
+            const totalParticipants = validData.length;
+            const totalFinishers = finishers.length;
+            const finishRate = ((totalFinishers / totalParticipants) * 100).toFixed(1);
+
+            // Calculate times
+            const times = finishers.map(row => parseTime(row.GUNTIME)).filter(t => t !== null);
+            const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+            const fastestTimeSeconds = Math.min(...times);
+
+            // Find fastest finisher to get event and calculate speed
+            const fastestFinisher = finishers.find(row => parseTime(row.GUNTIME) === fastestTimeSeconds);
+            const fastestDistance = getEventDistance(fastestFinisher.EVENT);
+            const fastestSpeed = calculateSpeed(fastestTimeSeconds, fastestDistance);
+
+            // Event counts
+            const eventCounts = {
+                'Full Marathon': validData.filter(r => r.EVENT === 'Full Marathon').length,
+                'Half Marathon': validData.filter(r => r.EVENT === 'Half Marathon').length,
+                '10K Run': validData.filter(r => r.EVENT === '10K Run').length
+            };
+
+            // Update stats
+            document.getElementById('totalParticipants').textContent = totalParticipants.toLocaleString();
+            document.getElementById('totalFinishers').textContent = totalFinishers.toLocaleString();
+            document.getElementById('finishRate').textContent = `${finishRate}% completion rate`;
+            document.getElementById('avgTime').textContent = formatTime(avgTime);
+            document.getElementById('fastestTime').textContent = formatTime(fastestTimeSeconds);
+            document.getElementById('fastestSpeed').textContent = `${fastestSpeed.toFixed(2)} km/h avg speed`;
+
+            document.getElementById('fullMarathonCount').textContent = eventCounts['Full Marathon'];
+            document.getElementById('halfMarathonCount').textContent = eventCounts['Half Marathon'];
+            document.getElementById('tenKCount').textContent = eventCounts['10K Run'];
+
+            // Create charts
+            createEventChart(eventCounts);
+            createGenderChart(validData);
+            createAgeGroupChart(validData);
+            createAvgTimeByEventChart(finishers);
+
+            // Create leaderboard
+            createLeaderboard(finishers);
+        }
+
+        function createEventChart(eventCounts) {
+            const ctx = document.getElementById('eventChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(eventCounts),
+                    datasets: [{
+                        data: Object.values(eventCounts),
+                        backgroundColor: [
+                            '#3b82f6',
+                            '#10b981',
+                            '#f59e0b'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createGenderChart(data) {
+            const genderCounts = {};
+            data.forEach(row => {
+                const gender = row.GENDER || 'Unknown';
+                genderCounts[gender] = (genderCounts[gender] || 0) + 1;
+            });
+
+            const ctx = document.getElementById('genderChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(genderCounts),
+                    datasets: [{
+                        data: Object.values(genderCounts),
+                        backgroundColor: [
+                            '#3b82f6',
+                            '#ec4899',
+                            '#8b5cf6'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 13
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createAgeGroupChart(data) {
+            const ageCounts = {};
+            data.forEach(row => {
+                const category = extractAgeCategory(row.AGEGROUP);
+                ageCounts[category] = (ageCounts[category] || 0) + 1;
+            });
+
+            // Sort age groups
+            const sortedLabels = ['Open', 'Masters', '40+', '50+', '60+', 'Other'].filter(label => ageCounts[label]);
+            const sortedData = sortedLabels.map(label => ageCounts[label]);
+
+            const ctx = document.getElementById('ageGroupChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Participants',
+                        data: sortedData,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 50
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createAvgTimeByEventChart(finishers) {
+            const eventTimes = {
+                'Full Marathon': [],
+                'Half Marathon': [],
+                '10K Run': []
+            };
+
+            finishers.forEach(row => {
+                const time = parseTime(row.GUNTIME);
+                if (time && eventTimes[row.EVENT]) {
+                    eventTimes[row.EVENT].push(time);
+                }
+            });
+
+            const avgTimes = {};
+            Object.keys(eventTimes).forEach(event => {
+                if (eventTimes[event].length > 0) {
+                    const avg = eventTimes[event].reduce((a, b) => a + b, 0) / eventTimes[event].length;
+                    avgTimes[event] = avg / 60; // Convert to minutes
+                }
+            });
+
+            const ctx = document.getElementById('avgTimeByEventChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(avgTimes),
+                    datasets: [{
+                        label: 'Average Time (minutes)',
+                        data: Object.values(avgTimes),
+                        backgroundColor: [
+                            '#3b82f6',
+                            '#10b981',
+                            '#f59e0b'
+                        ],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(0) + ' min';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createLeaderboard(finishers) {
+            // Separate finishers by event
+            const fullMarathonFinishers = finishers.filter(row => row.EVENT === 'Full Marathon');
+            const halfMarathonFinishers = finishers.filter(row => row.EVENT === 'Half Marathon');
+            const tenKFinishers = finishers.filter(row => row.EVENT === '10K Run');
+
+            // Create tables for each event
+            createEventLeaderboard('fullMarathonBody', fullMarathonFinishers, 'Full Marathon', 10);
+            createEventLeaderboard('halfMarathonBody', halfMarathonFinishers, 'Half Marathon', 10);
+            createEventLeaderboard('tenKBody', tenKFinishers, '10K Run', 10);
+        }
+
+        function createEventLeaderboard(tbodyId, finishers, eventType, limit) {
+            const tbody = document.getElementById(tbodyId);
+            tbody.innerHTML = '';
+
+            // For 10K Run, rank by time since OVERALLGUNRANK is not available
+            let sorted;
+            if (eventType === '10K Run') {
+                sorted = finishers
+                    .filter(row => row.GUNTIME)
+                    .sort((a, b) => {
+                        const timeA = parseTime(a.GUNTIME);
+                        const timeB = parseTime(b.GUNTIME);
+                        return timeA - timeB;
+                    })
+                    .slice(0, limit);
+            } else {
+                // For Full Marathon and Half Marathon, sort by overall gun rank
+                sorted = finishers
+                    .filter(row => row.OVERALLGUNRANK && parseInt(row.OVERALLGUNRANK) > 0)
+                    .sort((a, b) => parseInt(a.OVERALLGUNRANK) - parseInt(b.OVERALLGUNRANK))
+                    .slice(0, limit);
+            }
+
+            if (sorted.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="7" style="text-align: center; color: #64748b;">No finishers found</td>';
+                tbody.appendChild(tr);
+                return;
+            }
+
+            sorted.forEach((row, index) => {
+                const timeSeconds = parseTime(row.GUNTIME);
+                const distance = getEventDistance(row.EVENT);
+                const pace = calculatePace(timeSeconds, distance);
+                const ageCategory = extractAgeCategory(row.AGEGROUP);
+
+                // For 10K, use index+1 as rank; for others use OVERALLGUNRANK
+                const rank = eventType === '10K Run' ? (index + 1) : parseInt(row.OVERALLGUNRANK);
+
+                let rankBadge = '';
+                if (rank === 1) rankBadge = '<span class="rank-badge rank-1">🥇</span>';
+                else if (rank === 2) rankBadge = '<span class="rank-badge rank-2">🥈</span>';
+                else if (rank === 3) rankBadge = '<span class="rank-badge rank-3">🥉</span>';
+                else rankBadge = `<span class="rank-badge rank-other">${rank}</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${rankBadge}</td>
+                    <td><strong>${row.BIB}</strong></td>
+                    <td><strong>${row.NAME}</strong></td>
+                    <td>${ageCategory}</td>
+                    <td>${row.GENDER}</td>
+                    <td><strong>${row.GUNTIME}</strong></td>
+                    <td>${pace} /km</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Initialize dashboard
+        loadData();
+    </script>
+</body>
+</html>
